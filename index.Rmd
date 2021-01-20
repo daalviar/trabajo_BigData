@@ -1,0 +1,337 @@
+---
+title: "Desigualdad en el mercado laboral"
+subtitle: "Daniela(daviar@alumni.uv.es)"
+author: "Universitat de València"
+date: "Enero de 2021 (actualizado el `r format(Sys.time(), '%d-%m-%Y')`)"
+output: rmdformats::readthedown
+html_document:
+    toc: true
+    toc_depth: 3 
+    toc_float: 
+    collapsed: true
+    smooth_scroll: true
+    self_contained: true
+    number_sections: false
+    df_print: kable
+    code_download: true
+    editor_options: 
+    chunk_output_type: console
+    always_allow_html: yes
+---
+
+```{r packages-setup, include = FALSE}
+library(rmdformats)
+library(dplyr)
+library(tidyverse)
+library(rlang)
+library(eurostat)
+library(plotly)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(stringr)
+library(ggthemes)
+library(gganimate)
+library(hrbrthemes)
+library(knitr)
+library(gt)
+library(paletteer)
+
+```
+
+
+```{r options-setup, include = FALSE}
+options(scipen = 999) #- para quitar la notación científica
+options("yaml.eval.expr" = TRUE) 
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<hr class="linea-black">
+
+Trabajo elaborado para la asignatura "Programación y manejo de datos en la era del Big Data" de la Universitat de València durante el curso 2020-2021. El repo del trabajo está [aquí](https://github.com/daalviar/trabajo_BigData){target="_blank"}. La página web de la asignatura y los trabajos de mis compañeros pueden verse [aquí](https://perezp44.github.io/intro-ds-20-21-web/07-trabajos.html){target="_blank"}.
+
+---------------
+
+## Índice
+ 
+ - 1. Introducción
+ - 2. Salarios mínimos
+ - 3. Brecha salarial
+ - 4. Población ocupada 
+ - 5. Conclusión
+ - 6. Bibliografía
+
+
+
+## 1.  Introducción
+
+El mercado laboral español presenta unos rasgos partículares que lo diferencian de sus vecinos europeos; la dualidad laboral, la rigidez de salarios y la elevada tasa de paro, son algunos de los factores que disinguen el modelo español. El presente trabajo trata de analizar el mercado laboral español desde el enfoque de la desigualdad de género, ya que la trayectoria del ciclo de empleo en España, ha mostrado históricamente el efecto destrucción de empleo para el coletivo femenino.
+
+## 2. Salarios mínimos 
+
+El salario mínimo inteprofesional supone un marco de referencia para remunerar el trabajo independientemente de la actividad laboral, el cual impide que algunas actividades se remuneren por debajo de su productividad o salario correspondiente, por tanto el salario mínimo se basa en un enfoque económico y social.
+
+La evolución de los salarios mínimos en España presenta pocas oscilaciones, no hace falta irse muy lejos en el tiempo, para observar la política de contención de salarios, además de escasos cambios, el salario mínimo español se posiciona como uno de los más bajos de Europa.
+
+
+```{r eval = TRUE, echo = FALSE}
+library("vembedr")
+embed_url("https://www.youtube.com/watch?v=zpP9U8ZzB9Y")
+```
+
+```{r eval = TRUE, echo = FALSE}
+
+#Otro aspecto relevante del mercado laboral de un país, es el salario mínimo, tema que ha generado mucho debate en los últimos debates políticos, a continuación se ve en un gráfico la evolución de los salarios mínimos para un período
+
+
+
+
+aa <- search_eurostat("Minimum", type = "all")
+#Busco datos sobre salarios mínimos
+
+my_table <- "tps00155"
+
+
+df <- get_eurostat(my_table, time_format = 'raw', keepFlags = TRUE)
+
+df_w<- df %>% rename(Año=time, Valor=values)  %>%
+  mutate(Pais = case_when( geo == "FR" ~ "Francia",
+ geo == "ES" ~ "España",
+ geo == "NL" ~ "Paises Bajos",
+ geo == "UK" ~ "Reino Unido")) %>%  filter(Pais %in% c( "Francia", "España", "Reino Unido", "Paises Bajos"))%>% filter(!is.na(Valor))  %>% select(Pais, Año, Valor)
+
+df_w2<- df_w  %>% filter(Año=="2015")
+```
+
+```{r eval = TRUE, echo = TRUE}
+
+#Grefico evolucion de los salarios minimos
+  
+  p <- ggplot( df_w, aes(Año, Valor,color = Pais)) +
+  scale_x_discrete( breaks = seq(2005, 2015, 5)) +
+     geom_point(size=2)+
+     geom_jitter( color = "purple2")+
+    facet_wrap(~Pais)+
+    ylab("Salario mínimo (€)") +
+    theme_light()
+
+p+ transition_reveal(readr::parse_number(Año))+
+  ease_aes('linear')
+  
+ 
+
+```
+
+
+## 3. Brecha salarial {.tabset}
+
+### Gráfico brecha salarial
+
+Medir la diferencia entre los salarios de hombres y mujeres, es la herramienta mediante la cual se calcula la brecha salarial, este dato resulta de gran interés social, ya que permite valorar cómo de equitativa es la sociedad de un país en cuando a igualdad de condiciones. La brecha salarial se calcula sobre la media de entre los ingresos brutos de todos los trabajadores por hora.
+
+```{r eval = TRUE, echo = FALSE}
+
+
+aa <- search_eurostat("Gender", type = "all")
+#- Busco datos relacionados con el genero
+
+my_table <- "earn_gr_gpgr2"
+
+#- Bajo la tabla de brecha salarial por genero
+
+
+
+
+df <- get_eurostat(my_table, time_format = 'raw', keepFlags = TRUE)
+
+
+df_names <- names(df)
+df <- label_eurostat(df, code = df_names, fix_duplicated = TRUE)
+rm(aa,  df_names, my_table)
+
+
+
+df_br <- df  %>% rename(Año=time, Valor=values)  %>%
+  mutate(Pais = case_when( geo_code == "FR" ~ "Francia", 
+ geo_code == "DE" ~ "Alemania",
+ geo_code == "ES" ~ "España",
+ geo_code == "IT" ~ "Italia")) %>%  filter(Pais %in% c("Alemania", "Francia", "España"))%>% select(Pais, Año, Valor, nace_r2_code) %>%  filter(nace_r2_code== "N")
+```
+
+  
+  
+
+```{r eval = TRUE, echo = TRUE}
+#Gráfico Brecha salarial en el sector de la administración pública
+
+p <- ggplot(
+  df_br,
+  aes(Año, Valor, group = Pais, color = Pais
+  )) +
+  geom_line(size  = 1) +
+  geom_point() +
+  scale_color_viridis_d() +
+  labs(x = "Año", y = "Brecha salarial por genero") +
+  theme(legend.position = "top")
+
+p + transition_reveal(readr::parse_number(Año))
+
+
+
+```
+
+En el gráfico anterior se observa que España y Alemania son países que presentan una gran brecha salarial en el ámbito de la administración pública, en el período estudiado la evolución de la desigualdad es creciente y sólo se puede observar una reducción de ésta en 2012. Por otra parte, Francia presenta un evolución de la brecha particular distinta de España y Alemania, además cabe destacar que la diferencia entre salarios de hombres y mujeres en este país, es más reducida.
+
+###  Mapa brecha salarial
+
+```{r eval = TRUE, echo = FALSE}
+
+
+aa <- search_eurostat("Gender", type = "all")
+#- Busco datos relacionados con el género
+
+my_table <- "sdg_05_30"
+
+#- Bajo la tabla de brecha laboral por género
+
+
+label_eurostat_tables(my_table)    #- gives information about the table
+
+#Preparo los dataframes que voy a utilizar para crear el mapa
+
+df_ok<- get_eurostat(my_table, time_format = 'raw', keepFlags = TRUE)
+
+df_emp<- df_ok  %>% filter(time==2019)  %>% rename(Año=time, Valor=values)  %>%  mutate(region = case_when (geo== "FR" ~ "France", 
+ geo== "DE" ~ "Germany",
+  geo == "PT" ~ "Portugal",
+ geo == "ES" ~ "Spain",
+ geo == "LT" ~ "Lithuania",
+  geo == "CZ" ~ "Czech republic",
+  geo == "DK" ~ "Denmark",
+  geo == "NL" ~ "Netherland",
+  geo == "FI" ~ "Finland",
+   geo == "EE" ~ "Estonia",
+  geo == "SK" ~ "Slovakia",
+   geo == "IE" ~ "Ireland",
+  geo == "AT" ~ "Austria"
+  )) %>% select(Año, Valor, region)
+
+
+
+
+some.eu.countries <- c(
+  "Portugal", "Spain", "France", "Germany",
+  "Austria", "Ireland", "Netherlands",
+  "Denmark", "Estonia", "Lithuania", 
+  "Finland", "Slovakia", "Czech republic", "Austria")
+
+mapa.eu <- map_data("world", region = some.eu.countries)
+
+#Uno los dataframe
+
+mapa.emp <- left_join(mapa.eu, df_emp, by = "region")
+```
+
+```{r eval = TRUE, echo = TRUE}
+
+#Creo un mapa de Europa, con las regiones con mayor brecha laboral por género
+
+
+
+ggplot(mapa.emp, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = Valor ), color = "white")+
+  scale_fill_viridis_c(option = "C")+ ylab("Latitud")+ 
+  xlab("Longitud")+ labs(title = "Países con mayor brecha laboral", subtitle = "Unión Europea")
+
+
+```
+
+
+
+Como se puede observar España, Alemania y Francia son algunos de los países con mayor brecha salarial.
+
+### Ley de Igualdad y Transparencia Retributiva
+
+Ley configurada a través de un real decreto, pretende fomentar la igualdad en el trato en detrimento de la discriminación por sexo en el ámbito de retribuciones, la ley pretende dotar de herramientas que sirvan para detectar y corregir la discriminación en este terreno, además de promover la igualdad, eliminando cualquier factor que suponga un óbstaculo para lograr dicha igualdad.
+
+
+
+## 4.  Población ocupada
+
+La empleabilidad de la polbación, por sexo y por género es también un buen reflejo de la igualdad de género de un país, por ello en este apartado vamos a analizar la ocupación por sexo para el año 2019 en España.
+
+
+```{r eval = TRUE, echo = FALSE}
+aa <- search_eurostat("sex", type = "all")
+my_table <- "lfsi_emp_a"
+
+#- Bajo la tabla de brecha laboral por género
+
+
+label_eurostat_tables(my_table)  
+
+df_ok<- get_eurostat(my_table, time_format = 'raw', keepFlags = TRUE)
+
+
+df_sex<- df_ok %>% rename(Año=time, Valor=values, Edad=age, Sexo=sex, Actividad=indic_em) %>% 
+              mutate(Pais = case_when(geo == "ES" ~ "España"))  %>%  filter(Pais=="España")%>%
+             filter(!is.na(Valor), unit== "PC_POP")%>%  
+             filter(Año==2019, Sexo%in% c("F","M"), Actividad== "EMP_LFS") %>% select(Pais, Año, Edad, Sexo , Actividad, Valor)
+
+
+```
+
+```{r eval = TRUE, echo = TRUE}
+#Creo una tabla con los datos obtenidos de eurostat, en concreto una tabla de los empleados totales por sexo y edad en España, para el año 2019.
+
+
+gt_tbl<- df_sex %>% gt()
+
+my_pal <- scales::col_numeric(
+  paletteer::paletteer_d(
+    palette = "ggsci::blue_material"
+    ) %>% as.character(),
+  domain = NULL
+  )
+
+gt_tbl<- df_sex  %>%  head() %>% gt(
+    groupname_col = "Edad",
+    rowname_col = "Pais"
+  ) %>% 
+  data_color(
+    columns = vars(Valor),
+    colors = my_pal
+      ) 
+ 
+gt_tbl %>% tab_header(title = md("**Ocupación por género**"))
+
+```
+
+## 5.  Conclusión
+
+A pesar de los grandes esfuerzos políticos y sociales, por lograr la igualdad en el ámbito laboral, aún persisten grandes diferencias salariales y de calidad en los empleos, para hombres y mujeres, no obstante, son muchos los factores que pueden generar la brecha laboral, además de la simple discriminación, hay que tener en cuenta el sector productivo en que esté empleada una mujer, ya que cada sector productivo presenta unas características productivas y económicas, que pueden justificar un salario u otro.
+
+![Desigualdad](./imagenes/brecha.jpg)
+
+
+
+
+
+
+
+## 6.  Bibliografía
+
+Manual para crear mapas [enlace Blog sobre creación mapas](https://www.datanovia.com/en/blog/how-to-create-a-map-using-ggplot2/)
+
+Datos obtenidos desde eurostat [enlace a EUROSTAT](https://ec.europa.eu/eurostat/data/database) 
+
+
+Información sobre el salario mínimo [enlace a Blog salario mínimo](http://www.salariominimo.es/#3)
+
+Material de clase [enlace a web profesor](https://perezp44.github.io/intro-ds-20-21-web/05-slides.html)
+
+Solución de errores con [enlace a Blog stackoverflow](https://stackoverflow.com/questions)
+
+
